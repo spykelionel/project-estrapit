@@ -80,6 +80,8 @@ best_fitness = fitness(best_solution)
 # Print the best solution
 combination = []
 print("Best solution:")
+print(best_solution)
+print(best_solution)
 for i in range(chromosome_length):
     if best_solution[i]:
         combination.append(objects[i]['c'])
