@@ -16,7 +16,7 @@ objects = [
     {"cost": 1, "duration": 3, "granularity": "I","c": "c7"},
 ]
 
-maximum_cost = 10
+maximum_cost = 7
 chromosome_length = len(objects)
 
 # Neural Network Parameters
@@ -36,20 +36,6 @@ def decode_individual(individual):
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
 
-def evaluate_individual(individual):
-    combination = []
-    input_hidden_weights, hidden_output_weights = decode_individual(individual)
-    total_duration = 0
-    total_cost = 0
-    for obj in range(len(objects)):
-        activation = sigmoid(np.dot(objects[obj]["cost"], input_hidden_weights[:, obj]) + np.dot(objects[obj]["duration"], hidden_output_weights[:, 0]))
-
-        if activation[obj] > 0.5:
-            total_duration += objects[obj]["duration"]
-            total_cost += objects[obj]["cost"]
-            combination.append(objects[obj]["c"])
-    return total_duration, total_cost, combination
-
 def mutate(individual):
     for i in range(len(individual)):
         if random.random() < mutation_rate:
@@ -67,14 +53,38 @@ def selection(population):
     selected = sorted_population[:int(len(sorted_population)/2)]
     return selected
 
+def evaluate_individual(individual):
+    combination = []
+    input_hidden_weights, hidden_output_weights = decode_individual(individual)
+    total_duration = 0
+    total_cost = 0
+    granularities = set()  # Set to store unique granularities
+
+    for obj in range(len(objects)):
+        activation = sigmoid(np.dot(objects[obj]["cost"], input_hidden_weights[:, obj]) + np.dot(objects[obj]["duration"], hidden_output_weights[:, 0]))
+        if activation[obj] > 0.5:
+            total_duration += objects[obj]["duration"]
+            total_cost += objects[obj]["cost"]
+            combination.append(objects[obj]["c"])
+            granularities.add(objects[obj]["granularity"])
+
+    # Check if the solution contains items from both granularities ("D" and "I")
+    if len(granularities) < 2:
+        # Solution contains items from only one granularity, so set total duration and cost to zero
+        total_duration = 0
+        total_cost = 0
+        combination = []
+
+    return total_duration, total_cost, combination
+
+# ... (other code remains the same) ...
+
 def genetic_algorithm():
     solution = 0
     population = [create_individual() for _ in range(population_size)]
-
     for _ in range(generations):
         selected_population = selection(population)
         new_population = selected_population[:]
-
         while len(new_population) < population_size:
             parent1, parent2 = random.sample(selected_population, 2)
             child1, child2 = crossover(parent1, parent2)
@@ -82,16 +92,13 @@ def genetic_algorithm():
             child2 = mutate(child2)
             new_population.append(child1)
             new_population.append(child2)
-
         population = new_population
-        # Evaluate only individuals with 1 i.e. truthy values...
+
+    # Evaluate individuals in the final population
     for individual in population:
-        new_individuals = [i for i in individual if i>0]
         total_duration, total_cost, combination = evaluate_individual(individual)
-        # print(f"Total Cost: {total_cost}, Total Duration: {total_duration}")
-        if total_cost <= maximum_cost and total_cost>0 and  total_duration>0:
+        if total_cost <= maximum_cost and total_cost > 0 and total_duration > 0:
             print(solution, "eme solution")
-            # print("Individual:", individual)
             print("Total duration:", total_duration)
             print("Total cost:", total_cost)
             print(f"Combination: {combination}")
